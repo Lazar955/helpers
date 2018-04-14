@@ -4,6 +4,9 @@ dgvPredmeti.DataSource = predmeti;
 //parsiranje datuma
 datum = DateTime.ParseExact(txtDatum.Text, "dd.MM.yyyy.", CultureInfo.InvariantCulture);
 
+var myDate = DateTime.Now;
+var newDate = myDate.AddYears(-1);
+
 //validacija cb selected item
  VrstaPostupka vp = cbVrstaPostupka.SelectedItem as VrstaPostupka;
             if (vp.Naziv != advokat.Specijalnost)
@@ -198,4 +201,6 @@ try
                 konekcija.Close();
             }
         }
+
+
 

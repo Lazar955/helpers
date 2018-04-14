@@ -86,3 +86,116 @@ while (citac.Read())
     a.Predmet = p;
 
     lista.Add(a);
+
+////////////////stavka
+
+StavkaRacuna stavkaRacuna = new StavkaRacuna();
+                stavkaRacuna.RedniBroj = listaStavki.Count + 1;
+
+                listaStavki.Add(stavkaRacuna);
+
+                DataGridViewComboBoxCell cmbProizovdi = new DataGridViewComboBoxCell();
+                cmbProizovdi.DataSource = Broker.dajBrokera().VratiSveProizvode();
+                cmbProizovdi.DisplayMember = "Naziv";
+                cmbProizovdi.ValueMember = "Vrednost";
+
+
+                dgvStavke.Rows[stavkaRacuna.RedniBroj - 1].Cells[1] = cmbProizovdi;
+
+//bindinglist
+var yourList = new List<Customer>();
+var listBinding = new BindingList<Customer>(yourList);
+
+
+//sacuvaj racun i stavku
+
+try
+            {
+                komanda.CommandText = $"insert into Racun values({r.BrRacun}, {r.Osoba.Jmbg})";
+                komanda.CommandType = CommandType.Text;
+                konekcija.Open();
+                transakcija = konekcija.BeginTransaction();
+                komanda.Transaction = transakcija;
+                int rezultat = komanda.ExecuteNonQuery();
+                foreach (StavkaRacuna stavka in r.StavkeRacuna)
+                {
+                    komanda.CommandText = $"insert into StavkaRacuna values({r.BrRacun}, {stavka.RedniBroj}, {stavka.Proizvod.Sifra}, {stavka.Cena}, {stavka.Kolicina})";
+                    komanda.ExecuteNonQuery();
+                }
+
+
+                transakcija.Commit();
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                transakcija.Rollback();
+                throw ex;
+            }
+
+            finally
+            {
+                konekcija.Close();
+            }
+
+
+///vrati sve racune i stavke
+
+
+  public List<Racun> VratiSveRacuna()
+        {
+            List<Racun> listaRacuna = new List<Racun>();
+            try
+            {
+                komanda.CommandText = $"select * from Racun inner join Osoba on Osoba.jmbg = Racun.Osoba";
+                komanda.CommandType = CommandType.Text;
+                konekcija.Open();
+                OleDbDataReader citac = komanda.ExecuteReader();
+
+                while(citac.Read())
+                {
+                    Racun racun = new Racun
+                    {
+                        BrRacun = (int)citac["Broj"],
+                        Osoba = new Osoba
+                        {
+                            Jmbg = (int)citac["jmbg"],
+                            ImePrezime = citac["imePrezime"].ToString(),
+                            Mesto = new Mesto()
+                        },
+                        StavkeRacuna = new List<StavkaRacuna>()
+                    };
+
+
+                    OleDbCommand komanda2 = konekcija.CreateCommand();
+                    komanda2.CommandText = $"select * from StavkaRacuna where BrojRacuna={racun.BrRacun}";
+                    komanda2.CommandType = CommandType.Text;
+                    OleDbDataReader citac2 = komanda2.ExecuteReader();
+                    while(citac2.Read())
+                    {
+                        StavkaRacuna sr = new StavkaRacuna
+                        {
+                            RedniBroj = (int)citac2["Rb"],
+                            Cena = (double)citac2["Cena"],
+                            Kolicina = (int)citac2["Kolicina"],
+                            Proizvod = new Proizvod()
+                        };
+
+                        racun.StavkeRacuna.Add(sr);
+                    }
+                    listaRacuna.Add(racun);
+                }
+
+                return listaRacuna;
+            }
+            catch (Exception ex)
+            {
+
+                throw ex;
+            }
+            finally
+            {
+                konekcija.Close();
+            }
+        }
+

@@ -1,0 +1,88 @@
+private BindingList<Predmet> predmeti = new BindingList<Predmet>();
+dgvPredmeti.DataSource = predmeti;
+
+//parsiranje datuma
+datum = DateTime.ParseExact(txtDatum.Text, "dd.MM.yyyy.", CultureInfo.InvariantCulture);
+
+//validacija cb selected item
+ VrstaPostupka vp = cbVrstaPostupka.SelectedItem as VrstaPostupka;
+            if (vp.Naziv != advokat.Specijalnost)
+
+// brisanje selected itema iz dgv
+ if (dgvPredmeti.SelectedCells[0].RowIndex < predmeti.Count)
+                predmeti.RemoveAt(dgvPredmeti.SelectedCells[0].RowIndex);
+
+int id = VratiNovID();
+konekcija.Open();
+OleDbCommand komanda = konekcija.CreateCommand();
+komanda.CommandType = System.Data.CommandType.Text;
+komanda.Transaction = konekcija.BeginTransaction();
+try
+{
+    foreach (Predmet p in list)
+    {
+        string sql = "INSERT INTO Predmet (PredmetID, Naziv, Problem, Datum, Advokat, KlijentID, VrstaPostupkaID)" +
+            $" VALUES ({id}, '{p.Naziv}', '{p.Problem}', '{p.Datum}', '{p.Advokat.Username}', {p.Klijent.KlijentID}, {p.VrstaPostupka.VrstaPostupkaID})";
+        komanda.CommandText = sql;
+        komanda.ExecuteNonQuery();
+        id++;
+    }
+
+    komanda.Transaction.Commit();
+}
+
+catch (Exception e)
+{
+    komanda.Transaction.Rollback();
+    throw e;
+}
+finally
+{
+    konekcija.Close();
+}
+
+
+///////////////
+//////Napravi cmb u dgv, prvo insert prazan RowIndex
+ Asistent a = new Asistent();
+
+listaAsistenataBindig.Add(a);
+
+DataGridViewComboBoxCell cmbPredmeti = new DataGridViewComboBoxCell();
+
+cmbPredmeti.DataSource = Sesija.Broker.dajSesiju().vratiPredmete();
+cmbPredmeti.DisplayMember = "Naziv";
+cmbPredmeti.ValueMember = "ObjekatPredmet";
+
+dgvAsistenti.Rows[listaAsistenataBindig.Count() - 1].Cells["Predmet"] = cmbPredmeti;
+
+//
+brisanje selektovanog itema iz binding listaAsistenataBindig
+ Asistent a = dgvAsistenti.SelectedRows[0].DataBoundItem as Asistent;
+listaAsistenata.Remove(a);
+
+----
+
+
+konekcija.Open();
+komanda.CommandText = "SELECT * FROM TAsistent inner join TPredmet on TAsistent.PredmetId=TPredmet.Sifra";
+OleDbDataReader citac = komanda.ExecuteReader();
+
+while (citac.Read())
+{
+    Asistent a = new Asistent();
+    
+    a.Sifra = Convert.ToInt32(citac["TAsistent.Sifra"]);
+    a.Ime = citac["Ime"].ToString();
+    a.Prezime = citac["Prezime"].ToString();
+    a.Titula = citac["Titula"].ToString();
+
+    Predmet p = new Predmet();
+    p.Sifra = Convert.ToInt32(citac["TPredmet.Sifra"]);
+    p.Naziv = citac["Naziv"].ToString();
+    p.Semestar = Convert.ToInt32(citac["Semestar"]); 
+    p.BrojBodova = Convert.ToInt32(citac["BrojBodova"]);
+
+    a.Predmet = p;
+
+    lista.Add(a);

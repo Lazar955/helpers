@@ -1,0 +1,122 @@
+public class Broker
+	{
+		public static Broker instance;
+		OleDbConnection konekcija;
+
+		private Broker()
+		{
+			konekcija = new OleDbConnection(@"Provider=Microsoft.ACE.OLEDB.12.0;Data Source=C:\Users\lazar\Desktop\Softveri vvvv\G1.accdb");
+		}
+
+		public static Broker Instance
+		{
+			get
+			{
+				if (instance == null)
+				{
+					instance = new Broker();
+				}
+				return instance;
+			}
+		}
+
+		public List<Klijent> VratiKlijente()
+		{
+			try
+			{
+				List<Klijent> klijenti = new List<Klijent>();
+				string sql = "SELECT * FROM Klijent ORDER BY Prezime ASC";
+				konekcija.Open();
+				OleDbCommand komanda = new OleDbCommand(sql, konekcija);
+
+				OleDbDataReader citac = komanda.ExecuteReader();
+
+				while (citac.Read())
+				{
+					klijenti.Add(new Klijent()
+					{
+						KlijentID = (int)citac["KlijentID"],
+						Ime = citac["Ime"].ToString(),
+						Prezime = citac["Prezime"].ToString(),
+						Telefon = citac["Telefon"].ToString(),
+						ElPosta = citac["ElPosta"].ToString(),
+						Adresa = citac["Adresa"].ToString()
+					});
+				}
+
+				return klijenti;
+			}
+			catch (Exception e)
+			{
+				throw e;
+			}
+			finally
+			{
+				konekcija.Close();
+			}
+
+		}
+
+		
+
+		public void SacuvajPredmete(List<Predmet> list)
+		{
+			int id = VratiNovID();
+			konekcija.Open();
+			OleDbCommand komanda = konekcija.CreateCommand();
+			komanda.CommandType = System.Data.CommandType.Text;
+            komanda.Transaction = konekcija.BeginTransaction();
+			try
+			{
+				foreach (Predmet p in list)
+				{
+					string sql = "INSERT INTO Predmet (PredmetID, Naziv, Problem, Datum, Advokat, KlijentID, VrstaPostupkaID)" +
+						$" VALUES ({id}, '{p.Naziv}', '{p.Problem}', '{p.Datum}', '{p.Advokat.Username}', {p.Klijent.KlijentID}, {p.VrstaPostupka.VrstaPostupkaID})";
+					komanda.CommandText = sql;
+					komanda.ExecuteNonQuery();
+					id++;
+				}
+
+                komanda.Transaction.Commit();
+			}
+            
+			catch (Exception e)
+			{
+                komanda.Transaction.Rollback();
+                throw e;
+			}
+			finally
+			{
+				konekcija.Close();
+			}
+		}
+
+		public int VratiNovID()
+		{
+			try
+			{
+				konekcija.Open();
+				OleDbCommand komanda = konekcija.CreateCommand();
+				komanda.CommandType = System.Data.CommandType.Text;
+
+				string sql = "SELECT MAX(PredmetID) FROM Predmet";
+				komanda.CommandText = sql;
+
+				var k = komanda.ExecuteScalar();
+				if (k != DBNull.Value)
+				{
+					return Convert.ToInt32(k) + 1;
+				}
+				else
+				{
+					return 1;
+				}
+			}
+			catch (Exception e)
+			{
+				throw e;
+			}
+			finally
+			{
+				konekcija.Close();
+			}

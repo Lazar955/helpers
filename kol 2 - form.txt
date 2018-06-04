@@ -1,0 +1,173 @@
+//DialogResult
+private void btnPrijaviSe_Click(object sender, EventArgs e)
+{
+    if (string.IsNullOrWhiteSpace(txtKorisnickoIme.Text))
+    {
+        MessageBox.Show("Morate uneti korisnicko ime!");
+        return;
+    }
+
+    if (Komunikacija.Instance.PrijaviSe(txtKorisnickoIme.Text))
+    {
+        DialogResult = DialogResult.OK;
+        this.Dispose();
+    }
+    else
+    {
+        MessageBox.Show("Pogresno korisnicko ime!");
+    }
+}
+
+//main form
+try
+{
+    Komunikacija.Instance.PoveziSe();
+    Login l = new Login();
+    l.ShowDialog();
+    if (l.DialogResult == DialogResult.OK)
+    {
+        lblKorisnik.Text = Komunikacija.Instance.Korisnik.Ime;
+        Komunikacija.Instance.OsluskujOdgovore(this);
+    }
+    else
+    {
+        this.Dispose();
+    }
+}
+catch (Exception)
+{
+    System.Windows.Forms.MessageBox.Show("Nije moguce povezati se sa serverom!");
+    this.Dispose();
+}
+
+delegate void DodajTextDelegat(string val);
+
+//poziv
+
+Invoke(new DodajTextDelegat(this.DodajPretragu), odgovor.ToString());
+
+private void DodajPretragu(string odg)
+{
+    rtbPretraga.Text = odg;
+}
+
+// anonimna fja
+ Invoke(new MethodInvoker(delegate { rtbPretraga.Text = odgovor.ToString(); }));
+
+ //pocetak vremena
+ long currentTime = DateTime.Now.Ticks;
+
+ //return client.GameTime !=0 && (currentTime - client.GameTime) / TimeSpan.TicksPerSecond > 10; da li je proslo 10 sec
+
+//Server start
+ private Socket serverSoket;
+private bool kraj = false;
+List<ObradaKlijenta> klijenti = new List<ObradaKlijenta>();
+
+try
+{
+    Thread nit = new Thread(s.PokreniServer);
+    nit.Start();
+    btnPokreni.Enabled = false;
+    btnZaustavi.Enabled = true;
+    txtStatus.Text = "Server je pokrenut";
+    dataGridView1.DataSource = Repozitorijum.Instance.Recnik;
+    //OsveziTabelu(); kod rucnog postavljanja tabele
+}
+catch (Exception ex)
+{
+    MessageBox.Show(ex.Message);
+}
+
+
+public void PokreniServer()
+{
+    try { 
+    serverSoket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+    serverSoket.Bind(new IPEndPoint(IPAddress.Any, 10000));
+    serverSoket.Listen(5);
+
+    while (!kraj)
+    {
+        Socket klijent = serverSoket.Accept();
+        ObradaKlijenta ok = new ObradaKlijenta(klijent, klijenti);
+        klijenti.Add(ok);
+    }
+    }catch(Exception e)
+    {
+
+    }
+
+}
+
+public Socket klijentSoket;
+public NetworkStream tok;
+private BinaryFormatter formater = new BinaryFormatter();
+private List<ObradaKlijenta> klijenti;
+
+public ObradaKlijenta(Socket klijent, List<ObradaKlijenta> klijenti)
+{
+    klijentSoket = klijent;
+    tok = new NetworkStream(klijentSoket);
+    this.klijenti = klijenti;
+    Thread nit = new Thread(ObradaZahteva);
+    nit.Start();
+}
+
+//Server END
+
+//Komunikacija
+private static Komunikacija instance;
+private bool povezan = false;
+private TcpClient soket;
+private NetworkStream tok;
+private BinaryFormatter formater = new BinaryFormatter();
+
+private Komunikacija()
+{
+}
+
+public static Komunikacija Instance
+{
+    get
+    {
+        if (instance == null)
+        {
+            instance = new Komunikacija();
+        }
+        return instance;
+    }
+}
+
+public void OsluskujOdgovore(GlavnaForma forma)
+{
+    Forma = forma;
+
+    Thread nit = new Thread(Osluskuj);
+    nit.Start();
+}
+
+//Komunikacija END
+
+private void Kraj()
+{
+    TransferKlasa zahtev = new TransferKlasa { Operacija = Operacije.KRAJ };
+    formater.Serialize(tok, zahtev);
+    //Forma.ZatvoriFormu();
+    Forma.Invoke(new Action(Forma.Close));
+}
+
+public void PoveziSe()
+{
+
+    if (povezan)
+    {
+        System.Windows.Forms.MessageBox.Show("Vec je povezan");
+        return;
+    }
+    soket = new TcpClient("127.0.0.1", 10000);
+    tok = soket.GetStream();
+    povezan = true;
+
+}
+
